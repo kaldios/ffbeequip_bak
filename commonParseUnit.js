@@ -151,6 +151,7 @@ String.prototype.hashCode = function() {
   return hash;
 };
 
+
 function getPassives(unitId, skillsIn, skills, lbs, enhancements, maxRarity, unitData, unitOut, latentSkillsByUnitId) {
     var baseEffects = {};
     var skillsOut = [baseEffects];
@@ -524,10 +525,6 @@ function addEffectsToEffectList(effectList, effects) {
 }
 
 function parsePassiveRawEffet(rawEffect, skillId, skills, unit, lbs) {
-
-    // list of passives that are not parsed by rawEffect[2]
-    // var pNotHandled = [4, 7, 9, 10 ,12, 16, 18 ,20, 23, 25, 26, 28, 29, 30, 35, 36, 37, 41, 42, 43, 46, 47, 48, 51, 59, 61, 66, 77, 80, 82, 84, 85, 10002, 10006];
-
     var result = {};
     // stat bonus
     if ((rawEffect[0] == 0 || rawEffect[0] == 1) && rawEffect[1] == 3 && rawEffect[2] == 1) {               
@@ -1086,21 +1083,24 @@ function parsePassiveRawEffet(rawEffect, skillId, skills, unit, lbs) {
             "improvedDW": true
         }
         return [result];
-
-    // display passives not handled?
-    //} else { //
     }
-    //if (!pNotHandled.includes(rawEffect[2])) {
-    //    console.log("Unknown Passive" + skillId);
-        console.log(rawEffect);
-    //    return null;
-    //}
-    
     return null;
 }
 
 function parseActiveSkill(skillId, skillIn, skills, unit, enhancementLevel = 0) {
     var skill = {"id": skillId , "name" : skillIn.name, "icon": skillIn.icon, "effects": []};
+    if (skillIn["effects_raw"][0][2] === 157) {
+        skill.maxCastPerBattle = skillIn["effects_raw"][0][3][2];
+        if (!skillIn["effects_raw"][0][3][7]) {
+            skill.noMulticast = true;
+        }
+        skillId = skillIn["effects_raw"][0][3][0];
+        if (!skills[skillId]) {
+            console.log(skillIn);
+        }
+        skillIn = skills[skillId];
+
+    }
     if (skillIn.type == "MAGIC") {
         skill.magic = skillIn.magic_type.toLocaleLowerCase();
     }
@@ -1972,7 +1972,7 @@ function parseActiveRawEffect(rawEffect, skillIn, skills, unit, skillId, enhance
         
     // use skill once - [skillId, ?, ?, ?, ?, ?, ?, ?, ?]
     } else if (rawEffect[2] == 157) {
-        result = null;
+        // handled elsewhere
         
     // p_damage + break mechanics damage - [typeMap, breakDamage, ?, p_damage, ?, ?] - only p_damage matters
     } else if (rawEffect[2] == 159) {
@@ -2424,9 +2424,9 @@ function formatSimpleOutput(units) {
 }
 
 function getUnitBasicInfo(unit, prefix = "", form = null) {
-    var result = "\n" + prefix + "\t\t\"name\":\"" + unit.name.replace(/"/g, '\\"') + (unit.braveShifted && !unit.name.endsWith("- Brave Shifted") ? " - Brave Shifted" : '') + "\",";
+    var result = "\n" + prefix + "\t\t\"name\":\"" + unit.name.replace(/"/g, '\\"').replace(/ - Brave Shifted/g, "").replace(/ BS$/g, "") + (unit.braveShifted ? " BS" : '') + "\",";
     if (unit.jpname) {
-        result += "\n" + prefix + "\t\t\"jpname\":\"" + unit.jpname.replace(/"/g, '\\"') + (unit.braveShifted ? " - Brave Shifted" : '') + "\",";
+        result += "\n" + prefix + "\t\t\"jpname\":\"" + unit.jpname.replace(/"/g, '\\"').replace(/ - Brave Shifted/g, "") + (unit.braveShifted ? " BS" : '') + "\",";
     }
     if (unit.wikiEntry) {
         result += "\n" + prefix + "\t\t\"wikiEntry\":\"" + unit.wikiEntry + "\",";
@@ -2445,7 +2445,7 @@ function getUnitBasicInfo(unit, prefix = "", form = null) {
         result += "\n" + prefix + "\t\t\"braveShift\":\"" + unit.braveShift + "\",";
     }
     if (unit.braveShifted) {
-        result += "\n" + prefix + "\t\t\"braveShifted\":true,";
+        result += "\n" + prefix + "\t\t\"braveShifted\":\"" + unit.braveShifted + "\",";
     }
     if (unit.exAwakenings) {
         result += "\n" + prefix + "\t\t\"exAwakening\": " + JSON.stringify(unit.exAwakenings) + ',';
@@ -2485,8 +2485,8 @@ function formatForSearch(units) {
             var unitOut = {"passives":{}, "actives":{"SELF":{}, "ST":{},"AOE":{}}, "lb":{"SELF":{}, "ST":{},"AOE":{}}, "counter":{"SELF":{}, "ST":{},"AOE":{}}};
             unitOut.equip = unit.equip;
             unitOut.id = unit.id;
-            unitOut.minRarity = unit.min_rarity;
-            unitOut.maxRarity = unit.max_rarity;
+            unitOut.minRarity = unit.min_rarity.toString();
+            unitOut.maxRarity = unit.max_rarity.toString();
             
             
             if (unit.innates.resist) {
